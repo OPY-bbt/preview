@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    @keyframes bloom {
+      from {
+        opacity: 0;
+      }
+      to   {
+        opacity: 1;
+      }
+    }
+
+    body {
+      display: flex;
+    }
+
+    .wrap {
+      position: relative;
+      width: 159px;
+      height: 281px;
+    }
+
+    .wrap>img {
+      position: absolute;
+      left: 0;
+    }
+
+    .img2 {
+      opacity: 0;
+      animation: bloom 3s ease-in 0.2s infinite alternate;
+    }
+
+    .img3 {
+      opacity: 0;
+      animation: bloom 3s ease-in 0.5s infinite alternate;
+    }
+
+    .reverse {
+      transform: scaleX(-1);
+      margin-right: 30px;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wrap reverse">
+    <img class="img1" src='./1.png' >
+    <img class="img2" src='./2.png' >
+    <img class="img3" src='./3.png' >
+  </div>
+  <div class="wrap">
+    <img class="img1" src='./1.png' >
+    <img class="img2" src='./2.png' >
+    <img class="img3" src='./3.png' >
+  </div>
+</body>
+</html>
