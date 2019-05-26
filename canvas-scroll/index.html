@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>canvas-scroll</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    canvas {
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    window.onload = () => {
+      const canvas = document.querySelector('canvas');
+      const ctx = canvas.getContext('2d');
+      const widgets = [];
+
+      let mouseTarget = null;
+      let listview = null;
+      
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const hasContain = (px, py, target) => {
+        const gx = target.globalX();
+        const gy = target.globalY();
+
+        if ((px > gx && px < gx + target.w) &&
+            (py > gy && py < gy + target.h)) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+
+      const bound = (val, min, max) => {
+        return val <= min ? min : (val >= max ? max : val);
+      }
+
+      /*** initEvents start ***/
+      const hMouse = (event) => {
+        const { pageX, pageY } = event;
+        switch(event.type) {
+          case 'mousedown': {
+            for(let i = listview.widgets.length;i--;) {
+              if (hasContain(pageX, pageY, listview) &&
+                  hasContain(pageX, pageY, listview.widgets[i])) {
+                mouseTarget = listview.widgets[i];
+                mouseTarget.onDown(pageX, pageY);
+              }
+            }
+            break;
+          }
+          case 'mousemove': {
+            if (mouseTarget) {
+              mouseTarget.onMove(pageX, pageY);
+            }
+            break;
+          }
+          case 'mouseup': {
+            if (mouseTarget) {
+              mouseTarget.onUp(pageX, pageY);
+            }
+            mouseTarget = null;
+            break;
+          }
+        }
+      }
+      canvas.addEventListener('mousedown', hMouse);
+      canvas.addEventListener('mousemove', hMouse);
+      canvas.addEventListener('mouseup', hMouse);
+
+      /*** initEvents end ***/
+
+      class Widget {
+        constructor() {
+          this.x = 0;
+          this.y = 0;
+          this.w = 0;
+          this.h = 0;
+          this.needClip = !1;
+          this.needMoveEvt = !1;
+          this.parent = null;
+
+          // 左溢出为正
+          this.offsetX = 0;
+          this.offsetY = 0;
+
+          this.widgets = [];
+        }
+
+        globalX() {
+          if (this.parent) {
+            return this.x - this.parent.offsetX + this.parent.globalX();
+          } else {
+            return this.x;
+          }
+        }
+
+        globalY() {
+          if (this.parent) {
+            return this.y - this.parent.offsetY + this.parent.globalY();
+          } else {
+            return this.y;
+          }
+        }
+
+        update() {
+          const x = this.x - this.offsetX;
+          const y = this.y - this.offsetY;
+
+          const gx = this.globalX();
+          const gy = this.globalY();
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(gx, gy, this.w, this.h);
+          ctx.clip();
+          ctx.translate(gx, gy);
+
+          this.paint();
+
+          for(let i = this.widgets.length;i--;) {
+            this.widgets[i].update(true);
+          }
+          ctx.restore();
+        }
+
+        onDown() {}
+        onMove() {}
+        onUp() {}
+
+        paint() {
+          ctx.beginPath();
+          ctx.strokeStyle = this.strokeColor;
+          ctx.rect(0, 0, this.w, this.h);
+          ctx.stroke();
+        }
+      }
+
+      class ListView extends Widget {
+        constructor(props) {
+          super(props);
+
+          this.needClip = !0;
+          this.x = 0;
+          this.y = 0;
+          this.w = window.innerWidth / 2;
+          this.h = window.innerHeight / 2;
+          this.strokeColor = 'red';
+          this.offsetX = 0;
+          this.offsetXold = 0;
+          this.scrollX = 0;
+
+          this.ticker = null;
+          this.velocity = 0;
+          this.timestamp = 0;
+          this.frame = 0;
+
+          widgets.push(this);
+
+          for(let i = 6; i--;) {
+            const item = new Item({
+              parent: this,
+              x: i * (this.w / 3 - 20),
+              w: this.w / 3 - 20,
+              num: i + 1,
+              strokeColor: ['green', 'blue', 'grey'][i % 3],
+            });
+            this.widgets.push(item);
+          }
+        }
+
+        setOffset(x) {
+          if (this.offsetX !== x) {
+            this.offsetXold = this.offsetX = bound(x, 0, (this.w / 3 - 20) * 6 - this.w);
+          }
+        }
+
+        startScroll(x) {
+          this.scrollX = x;
+          this.move = !0;
+          this.velStart();
+        }
+
+        setScroll(px) {
+          const dis = this.offsetXold - (px - this.scrollX) * 1 | 0;
+          this.offsetX = bound(dis, 0, (this.w / 3 - 20) * 6 - this.w)
+        }
+
+        endScroll() {
+          this.move = !1;
+          this.offsetXold = this.offsetX;
+          this.velRelease();
+        }
+
+        mScroll() {
+          const frame_duration = 1E3 / 60;
+          let amplitude = .2 * this.velocity;
+          let count = 0;
+          let offsetX = this.offsetX;
+
+          clearInterval(this.ticker);
+          this.ticker = setInterval(() => {
+            var delta = amplitude / frame_duration * 2;
+            offsetX += delta;
+            amplitude -= delta;
+            count++;
+
+            if (.5 > Math.abs(delta) || count > 3 * 60) {
+              clearInterval(this.ticker)
+            }
+            this.setOffset(offsetX);
+
+          }, frame_duration);
+        }
+
+        velStart() {
+          this.timestamp = Date.now();
+          this.frame = this.offsetX;
+          clearInterval(this.ticker);
+          this.ticker = setInterval(this.velTrack.bind(this), 1000 / 60);
+        }
+
+        velRelease() {
+          clearInterval(this.ticker);
+
+          5 < Math.abs(this.velocity) && this.mScroll();
+        }
+
+        velTrack() {
+          const timestamp = Date.now();
+          const duration = timestamp - this.timestamp;
+
+          this.timestamp = timestamp;
+
+          const frameDistance = this.offsetX - this.frame;
+          this.frame = this.offsetX;
+
+          const velocity_delta = 1E3 * frameDistance / (1 + duration);
+          this.velocity = 0 === this.velocity ? velocity_delta : .3 * velocity_delta + .7 * this.velocity;
+        }
+      }
+
+      class Item extends Widget {
+        constructor(props) {
+          super(props);
+
+          this.parent = props.parent;
+          this.needMoveEvt = !0;
+          this.x = props.x;
+          this.y = 10;
+          this.w = props.w;
+          this.h = window.innerHeight / 2 - 30;
+          this.num = props.num;
+          this.strokeColor = props.strokeColor;
+        }
+
+        paint() {
+          super.paint();
+          ctx.textAlign = 'center';
+          ctx.fillText(this.num, this.w / 2, this.h / 2);
+        }
+
+        onDown(px, py) {
+          this.parent.startScroll(px);
+        }
+        onMove(px, py) {
+          this.parent.setScroll(px);
+        }
+        onUp(px, py) {
+          this.parent.endScroll(px);
+        }
+      }
+
+      listview = new ListView;
+      setInterval(() => {
+        for(let i = widgets.length;i--;) {
+          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          widgets[i].update();
+        }
+      }, 1000 / 60);     
+    }
+  </script>
+</body>
+</html>
