@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    canvas {
+      width: 300px;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <canvas width="300" height="300"></canvas>
+  <script>
+    const canvas = document.querySelector('canvas');
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    canvas.width = w * devicePixelRatio;
+    canvas.height = h * devicePixelRatio;
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(devicePixelRatio, devicePixelRatio);    
+
+    const MARGIN = 35;
+    const RADIUS = w / 2 - MARGIN;
+    const TRUNCATION = 20;
+
+    setInterval(drawClock, 1000);
+
+    function drawClock() {
+      ctx.clearRect(0, 0, w, h);
+
+      drawCircle();
+      drawCenter();
+      drawHands();
+      drawNumerals();
+    }
+
+    function drawCircle() {
+      ctx.beginPath();
+      ctx.arc(w / 2, h / 2, RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    function drawCenter() {
+      ctx.beginPath();
+      ctx.arc(w / 2, h / 2, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawHands() {
+      const now = new Date();
+      let hour = now.getHours();
+
+      hour = hour > 12 ? hour - 12 : hour;
+
+      drawHand(hour * 5 + (now.getMinutes() / 60) * 5, true);
+      drawHand(now.getMinutes(), false);
+      drawHand(now.getSeconds(), false);
+    }
+
+    function getPos(loc, r) {
+      const angle = Math.PI / 2 - Math.PI * 2 * (loc / 60);
+      return [w / 2 + r * Math.cos(angle), h / 2 - r * Math.sin(angle)];
+    }
+
+    function drawHand(loc, isHour) {
+      const handlen = isHour ? (RADIUS - TRUNCATION - 20)
+                             : (RADIUS - TRUNCATION);
+      const position = getPos(loc, handlen);
+      ctx.beginPath();
+      ctx.moveTo(w / 2, h / 2);
+      ctx.lineTo(position[0], position[1]);
+      ctx.stroke();
+    }
+
+    function drawNumerals() {
+      for(let i = 1; i <= 12; i++) {
+        const numeralWidth = ctx.measureText(i).width;
+        const numeralHeight = ctx.measureText(i).height;
+
+        let position = getPos(i * 5, RADIUS - 20);
+        ctx.save()
+        ctx.beginPath();
+        ctx.arc(position[0], position[1], 10, 0, Math.PI * 2);
+        ctx.strokeStyle = 'cornflowerblue';
+        ctx.stroke();
+        ctx.restore();
+
+        position = [position[0] - numeralWidth / 2, position[1] + 3];
+        ctx.fillText(i, position[0], position[1]);
+      }
+    }
+  </script>
+</body>
+</html>

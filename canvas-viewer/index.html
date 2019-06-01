@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    body {
+      background-color: rgba(100, 145, 250, 0.3);
+    }
+
+    canvas {
+      margin-left: 20px;
+      margin-right: 0;
+      margin-bottom: 20px;
+      border: thin solid #aaa;
+      cursor: crosshair;
+      padding: 0;
+    }
+
+    #controls {
+      margin: 20px 0px 20px 20px;
+    }
+
+    #rubberbandDiv {
+      position: absolute;
+      display: none;
+      border: 3px solid blue;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button>reset</button>
+  </div>
+  <div id="rubberbandDiv"></div>
+  <canvas width="300" height="450"></canvas>
+  <script>
+    const rubberbandDiv = document.querySelector('#rubberbandDiv');
+    const resetBtn = document.querySelector('button');
+    const canvas = document.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+    const src = 'http://www.haopic.me/wp-content/uploads/2015/07/20150719030344392.jpg';
+    const mouseDown = {};
+    const image = new Image();
+    const rubberbandRectangle = {};
+    let dragging = false;
+
+    image.onload = function() {
+      drawImage();
+    }
+
+    image.src = src;
+
+    resetBtn.onclick = function() {
+      drawImage();
+    }
+
+    canvas.onmousedown = function(e) {
+      const { clientX, clientY } = e;
+
+      e.preventDefault();
+      rubberbandStart(clientX, clientY);
+
+      dragging = true;
+    }
+
+    window.onmousemove = function(e) {
+      const { clientX, clientY } = e;
+      e.preventDefault();
+      
+      if (dragging) {
+        rubberbandStretch(clientX, clientY);
+      }
+    }
+
+    window.onmouseup = function(e) {
+      rubberbandEnd();
+    }
+
+    function rubberbandStart(x, y) {
+      mouseDown.x = x;
+      mouseDown.y = y;
+
+      rubberbandRectangle.left = x;
+      rubberbandRectangle.top = y;
+
+      moveRubberbandDiv();
+      showRubberbandDiv();
+    }
+
+    function rubberbandStretch(x, y) {
+      rubberbandRectangle.left = x < mouseDown.x ? x : mouseDown.x;
+      rubberbandRectangle.top = y < mouseDown.y ? y : mouseDown.y;
+
+      rubberbandRectangle.width = Math.abs(x - mouseDown.x);
+      rubberbandRectangle.height = Math.abs(y - mouseDown.y);
+
+      moveRubberbandDiv();
+      resizeRubberbandDiv();
+    }
+
+    function rubberbandEnd() {
+      const rect = canvas.getBoundingClientRect();
+
+      ctx.drawImage(canvas,
+                    rubberbandRectangle.left - rect.left,
+                    rubberbandRectangle.top - rect.top,
+                    rubberbandRectangle.width,
+                    rubberbandRectangle.height,
+                    0, 0, canvas.width, canvas.height);
+
+      dragging = false;
+
+      hideRubberbandDiv();
+      
+      rubberbandRectangle.width = 0;
+      rubberbandRectangle.height = 0;
+      rubberbandRectangle.left = 0;
+      rubberbandRectangle.top = 0;
+      resizeRubberbandDiv();
+    }
+
+    function showRubberbandDiv() {
+      rubberbandDiv.style.display = 'block';
+    }
+
+    function hideRubberbandDiv() {
+      rubberbandDiv.style.display = 'none';
+    }
+
+    function moveRubberbandDiv() {
+      rubberbandDiv.style.top = rubberbandRectangle.top + 'px';
+      rubberbandDiv.style.left = rubberbandRectangle.left + 'px';
+    }
+
+    function resizeRubberbandDiv() {
+      rubberbandDiv.style.width = rubberbandRectangle.width + 'px';
+      rubberbandDiv.style.height = rubberbandRectangle.height + 'px';
+    }
+
+    function drawImage() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    }
+
+  </script>
+</body>
+</html>
